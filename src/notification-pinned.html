@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style type="text/css">
+		/*
+YUI 3.4.1 (build 4118)
+Copyright 2011 Yahoo! Inc. All rights reserved.
+Licensed under the BSD License.
+http://yuilibrary.com/license/
+*/
+html{color:#000;background:#FFF}body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre,code,form,fieldset,legend,input,textarea,p,blockquote,th,td{margin:0;padding:0}table{border-collapse:collapse;border-spacing:0}fieldset,img{border:0}address,caption,cite,code,dfn,em,strong,th,var{font-style:normal;font-weight:normal}ol,ul{list-style:none}caption,th{text-align:left}h1,h2,h3,h4,h5,h6{font-size:100%;font-weight:normal}q:before,q:after{content:''}abbr,acronym{border:0;font-variant:normal}sup{vertical-align:text-top}sub{vertical-align:text-bottom}input,textarea,select{font-family:inherit;font-size:inherit;font-weight:inherit}input,textarea,select{*font-size:100%}legend{color:#000}
+		</style>
+
+		<style type="text/css">
+		
+		body {
+			padding: 10px;
+			font-family: "helvetica neue",arial,sans-serif;
+		}
+		
+		h1 {
+			position: absolute;
+			font-size: 11px;
+			color: #8C7E7E;
+			bottom: 5px;
+			right: 5px;
+			font-weight: bold;
+		}
+		
+		h1 a {
+			color: #CB2027;
+		}
+		
+		#frmUpdate {
+			float: left;
+			margin-left: 5px;
+			margin-top: 1px;
+		}
+		
+		#frmUpdate input[type='text'] {
+			font-size: 12px;
+			border-radius: 6px;
+			border: 1px solid #BBB;
+			padding: 3px 6px;
+			box-shadow: 0 1px rgba(255,255,255,0.8), inset 0 1px rgba(255,255,255,0.35);
+			width: 200px;
+			display: block;
+			background: #fff;
+			outline: none;
+		}
+		
+		#frmUpdate input[type='submit'] {
+			margin-top: 5px;
+			padding: 3px 6px;
+			box-shadow: 0 1px rgba(255,255,255,0.8), inset 0 1px rgba(255,255,255,0.35);
+			border-radius: 6px;
+			font-size: 12px;
+			color: #524D4D;
+			border: 1px solid #BBB;
+			text-shadow: 0 1px rgba(255, 255, 255, 0.9);
+			background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#FDFAFB), to(#F0EDED), color-stop(.5,#F9F7F7),color-stop(.5,#F6F3F4));
+		}
+		
+		
+		#frmUpdate input[type='submit']:active {
+			box-shadow: inset 0 1px rgba(255,255,255,0.35);
+		}
+		
+		#frmUpdate input[type='submit']:disabled,
+		#frmUpdate input[type='text']:disabled {
+			color: #bbb;
+		}
+		
+		
+		
+		#imgMain {
+			position: relative;
+			margin: 1px 1px 3px 1px;
+			float: left;
+			display: none;
+			box-shadow: 0 1px 3px rgba(34,25,25,0.4);
+			padding: 5px;
+		}
+		
+		
+		
+		#wrap {
+			overflow: hidden;
+		}
+		
+		#wrap:after {
+			content: ".";
+			display: none;
+			clear: both;
+		}
+		
+		progress {
+			position: absolute;
+			left: 0;
+			bottom: 0;
+			width: 100%;
+			height: 2px;
+		}
+		
+		#error {
+			color: #CB2027;
+			font-size: 10px;
+			display: none;
+			margin-top: 5px;
+			margin-left: 5px;
+		}
+		
+		</style>
+
+		<title></title>
+		
+	</head>
+	<body>
+		
+		<h1 id="title"></h1>
+		<div id="wrap">
+			<img id="imgMain" />
+
+			<form id="frmUpdate">
+				<input type="text" id="txtDescription" placeholder="Add description" required />
+				<input type="submit" id="btnUpdate" value="Update Pin" />
+			</form>
+
+			
+
+		</div>
+
+		<div id="error">Error :( Please try again.</div>
+
+		<progress id="progress" value="100" max="100"></progress>
+
+
+	<script>
+		
+		var countDownAmount = 5000;
+		var currentCount = countDownAmount;
+		
+
+		var data = JSON.parse(window.location.hash.split('#')[1]);
+
+		window.onload = function () {
+
+			document.getElementById("title").innerHTML = 'Pinned to ' + data.board_name;
+
+			var progress = document.getElementById("progress");
+			var txtDescription = document.getElementById("txtDescription");
+			var btnUpdate = document.getElementById("btnUpdate");
+			var error = document.getElementById("error");
+
+			var img = document.getElementById("imgMain");
+
+			img.src = data.media_url;
+
+			img.onload = function () {
+				if (this.width >= this.height) {
+					this.width = Math.min(45, this.width);
+				} else {
+					this.height = Math.min(45, this.height);
+				}
+				img.style.display = "block";
+			}
+
+			document.getElementById("frmUpdate").onsubmit = function (e) {
+				e.preventDefault();
+				error.style.display = "none";
+				txtDescription.disabled = "disabled";
+				btnUpdate.disabled = "disabled";
+				btnUpdate.value = "Updating...";
+
+				data.description = txtDescription.value;
+
+				chrome.extension.sendRequest({ Data: data }, function (success) {
+					if (success) {
+						btnUpdate.value = "Updated!";
+						setTimeout(function () {
+							window.close();
+						}, 2000);
+					} else {
+						error.style.display = "block";
+						txtDescription.removeAttribute("disabled");
+						btnUpdate.removeAttribute("disabled");
+						btnUpdate.value = "Update";
+					}
+				});
+			}
+
+
+			var countDown = setInterval(function () {
+				currentCount -= 50;
+				if (currentCount == 0) {
+					window.close();
+				} else {
+					progress.value = (currentCount / countDownAmount) * 100;
+				}
+			}, 50);
+
+			txtDescription.placeholder = data.description;
+
+			txtDescription.onclick = btnUpdate.onclick = function () {
+				clearInterval(countDown);
+				countDown = null;
+				document.body.removeChild(progress);
+			}
+
+
+
+
+		}
+
+		
+	</script>
+
+	</body>
+</html>
