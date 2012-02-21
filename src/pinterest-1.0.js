@@ -38,7 +38,7 @@
  * USAGE:
  *
  * Pinterest.getBoards(function(boards) { console.log(boards); });
- * Pinterest.pin(???);
+ * Pinterest.pin(boardId, mediaURL, description, function(pinnedObject) { console.log(pinnedObject); });
  * 
  */
 
@@ -61,38 +61,38 @@ var Pinterest = {
     var self = this;
     
     if (!this.boardsScheduleIsRunning) {
-  		this.boardsScheduleIsRunning = true;
-  		
-  		var xhr = new XMLHttpRequest();
-  		xhr.open("GET", this.pinterestBookmarklet, true);
-  		
-  		xhr.onreadystatechange = function () {
-  			if (xhr.readyState === 4) {
-  				if (xhr.status === 200) {
-  				  // Convert Text to a HTML DOM (since the response is not text/xml we have to do this by hand)
-  				  var xmlDOM = self._updateBody(xhr.responseText);
-  				  
-  					var boardList = xmlDOM.querySelectorAll(".BoardList ul li");
-  					
-  					var boards = [];
-  					for (var i = 0; i < boardList.length; i++) {
-  						boards.push({
-  						    'title': boardList[i].querySelectorAll('span')[0].innerText,
-  						    'id': boardList[i].getAttribute('data')
-  						});
-  					}
-  					fx(boards); // CALLBACK -->
-  				} else {
-  					// ****** Handle logged out
-  					fx(401); // CALLBACK -->
-  				}
-  				
-  				this.boardsScheduleIsRunning = false;
-  			}
-  		}
-  		
-  		xhr.send(null);
-  	}
+      this.boardsScheduleIsRunning = true;
+      
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", this.pinterestBookmarklet, true);
+      
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            // Convert Text to a HTML DOM (since the response is not text/xml we have to do this by hand)
+            var xmlDOM = self._updateBody(xhr.responseText);
+            
+            var boardList = xmlDOM.querySelectorAll(".BoardList ul li");
+            
+            var boards = [];
+            for (var i = 0; i < boardList.length; i++) {
+              boards.push({
+                  'title': boardList[i].querySelectorAll('span')[0].innerText,
+                  'id': boardList[i].getAttribute('data')
+              });
+            }
+            fx(boards); // CALLBACK -->
+          } else {
+            // ****** Handle logged out
+            fx(401); // CALLBACK -->
+          }
+          
+          this.boardsScheduleIsRunning = false;
+        }
+      }
+      
+      xhr.send(null);
+    }
   },
   
   pin: function(boardId, mediaURL, description, fx) {
@@ -103,35 +103,35 @@ var Pinterest = {
      */
     var self = this;
     
- 		var xhr = new XMLHttpRequest();
- 		xhr.open("POST", this.pinterestBookmarklet, true);
- 		
- 		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
- 		xhr.onreadystatechange = function () {
- 			if (xhr.readyState === 4) {
- 				if (xhr.status === 200) {
- 				  // Convert Text to a HTML DOM (since the response is not text/xml we have to do this by hand)
-				  var xmlDOM = self._updateBody(xhr.responseText);
- 					
- 					// Prepare params
- 					var params = {
- 						media_url: mediaURL,
- 						description: description,
- 						pin_id: xmlDOM.querySelectorAll(".pinSuccess ul li:first-child a")[0].href.split('/')[4],
- 						board_id: board,
- 						board_name: xmlDOM.querySelectorAll(".pinSuccess h3 a")[0].innerHTML
- 					}
- 					
- 					fx(params); // CALLBACK -->
- 				} else {
- 				  // ****** Handle logged out
- 					fx(401); // CALLBACK -->
- 				}
- 			}
- 		};
- 		
- 		// Pin!
- 		xhr.send("board=" + boardId + "&currency_holder=buyable&peeps_holder=replies&tag_holder=tags&title=" + description + "&media_url=" + encodeURIComponent(mediaURL) + "&csrfmiddlewaretoken=" + token + "&caption=" + description);
+     var xhr = new XMLHttpRequest();
+     xhr.open("POST", this.pinterestBookmarklet, true);
+     
+     xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+     xhr.onreadystatechange = function () {
+       if (xhr.readyState === 4) {
+         if (xhr.status === 200) {
+           // Convert Text to a HTML DOM (since the response is not text/xml we have to do this by hand)
+          var xmlDOM = self._updateBody(xhr.responseText);
+           
+           // Prepare params
+           var params = {
+             media_url: mediaURL,
+             description: description,
+             pin_id: xmlDOM.querySelectorAll(".pinSuccess ul li:first-child a")[0].href.split('/')[4],
+             board_id: board,
+             board_name: xmlDOM.querySelectorAll(".pinSuccess h3 a")[0].innerHTML
+           }
+           
+           fx(params); // CALLBACK -->
+         } else {
+           // ****** Handle logged out
+           fx(401); // CALLBACK -->
+         }
+       }
+     };
+     
+     // Pin!
+     xhr.send("board=" + boardId + "&currency_holder=buyable&peeps_holder=replies&tag_holder=tags&title=" + description + "&media_url=" + encodeURIComponent(mediaURL) + "&csrfmiddlewaretoken=" + token + "&caption=" + description);
   },
   
   // **************************************************************************************************** OTHER API
@@ -143,31 +143,31 @@ var Pinterest = {
     var self = this;
     var token = "";
     
-  	if (!this.tokenScheduleIsRunning) {
-  		this.tokenScheduleIsRunning = true;
-  		
-  		var xhr = new XMLHttpRequest();
-  		xhr.open("GET", this.pinterestBookmarklet, true);
-  		
-  		xhr.onreadystatechange = function () {
-  			if (xhr.readyState === 4) {
-  				if (xhr.status === 200) {
-  				  // Convert Text to a HTML DOM (since the response is not text/xml we have to do this by hand)
-  				  var xmlDOM = self._updateBody(xhr.responseText);
-  				  
-  					token = xmlDOM.querySelectorAll("input[name='csrfmiddlewaretoken']")[0].value;
-  					
-  					fx(token); // CALLBACK -->
-  				} else {
-  				  // ****** Handle logged out
-  				  fx(401); // CALLBACK -->
-  				}
-  				this.tokenScheduleIsRunning = false;
-  			}
-  		}
-  		
-  		xhr.send(null);
-  	}
+    if (!this.tokenScheduleIsRunning) {
+      this.tokenScheduleIsRunning = true;
+      
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", this.pinterestBookmarklet, true);
+      
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            // Convert Text to a HTML DOM (since the response is not text/xml we have to do this by hand)
+            var xmlDOM = self._updateBody(xhr.responseText);
+            
+            token = xmlDOM.querySelectorAll("input[name='csrfmiddlewaretoken']")[0].value;
+            
+            fx(token); // CALLBACK -->
+          } else {
+            // ****** Handle logged out
+            fx(401); // CALLBACK -->
+          }
+          this.tokenScheduleIsRunning = false;
+        }
+      }
+      
+      xhr.send(null);
+    }
   },
   
   // **************************************************************************************************** SUPPORT
@@ -178,12 +178,12 @@ var Pinterest = {
      */
     var domDocument = document.implementation.createHTMLDocument();
     
-  	var range = domDocument.createRange();
-  	range.selectNode(domDocument.body);
-  	var documentFragment = range.createContextualFragment(str);
-  	domDocument.body.innerHTML = "";
-  	domDocument.body.appendChild(documentFragment);
-  	
-  	return domDocument;
+    var range = domDocument.createRange();
+    range.selectNode(domDocument.body);
+    var documentFragment = range.createContextualFragment(str);
+    domDocument.body.innerHTML = "";
+    domDocument.body.appendChild(documentFragment);
+    
+    return domDocument;
   }
 }
