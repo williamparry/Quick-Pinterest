@@ -146,7 +146,7 @@ chrome.extension.onRequest.addListener(function (resp, sender, sendResponse) {
 		}
 	}
 
-	xhr.send("details=" + resp.Data.description + "&link=" + resp.Data.media_url + "&board=" + resp.Data.board_id + "&csrfmiddlewaretoken=" + token);
+	xhr.send("details=" + resp.Data.description + "&link=" + resp.Data.url + "&board=" + resp.Data.board_id + "&csrfmiddlewaretoken=" + token);
 
 
 });
@@ -165,6 +165,7 @@ function pin(board, media_url, title) {
 				if (xhr.status === 200) {
 					updateBody(xhr.responseText);
 					var params = {
+						url: tab.url,
 						media_url: media_url,
 						description: title,
 						pin_id: document.querySelectorAll(".pinSuccess ul li:first-child a")[0].href.split('/')[4],
@@ -188,7 +189,7 @@ function pin(board, media_url, title) {
 				setInactive();
 			}
 		};
-		xhr.send("board=" + board + "&currency_holder=buyable&peeps_holder=replies&tag_holder=tags&title=" + title + "&media_url=" + encodeURIComponent(media_url) + "&csrfmiddlewaretoken=" + token + "&caption=" + title);
+		xhr.send("board=" + board + "&currency_holder=buyable&peeps_holder=replies&tag_holder=tags&title=" + title + "&media_url=" + encodeURIComponent(media_url) + "&url=" + encodeURIComponent(tab.url) + "&csrfmiddlewaretoken=" + token + "&caption=" + title);
 	});
 }
 
