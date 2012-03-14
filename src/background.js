@@ -9,7 +9,8 @@ var boardsSchedule,
 	boardsScheduleIsRunning = false,
 	tokenSchedule,
 	tokenScheduleIsRunning = false,
-	token;
+	token,
+	pinterestedTabs = [];
 
 function updateBody(str) {
 	var range = document.createRange();
@@ -94,9 +95,7 @@ function getBoards() {
 			if (xhr.readyState === 4) {
 				if (xhr.status === 200) {
 					chrome.contextMenus.removeAll();
-					var contextMenuImage = chrome.contextMenus.create({ "title": "Pin image to", "contexts": ["image"] }),
-					contextMenuVideo = chrome.contextMenus.create({ "title": "Pin video to", "contexts": ["video"] });
-					
+					var contextMenuImage = chrome.contextMenus.create({ "title": "Pin image to", "contexts": ["image"] });
 					updateBody(xhr.responseText);
 					var boardList = document.querySelectorAll(".BoardList ul li");
 					for (var i = 0; i < boardList.length; i++) {
@@ -106,11 +105,6 @@ function getBoards() {
 								"onclick": function (obj) {
 									pin(board.getAttribute('data'), obj.srcUrl);
 								}, "parentId": contextMenuImage
-							});
-							chrome.contextMenus.create({ "title": boardTitle, "contexts": ["video"],
-								"onclick": function (obj) {
-									pin(board.getAttribute('data'), obj.pageUrl);
-								}, "parentId": contextMenuVideo
 							});
 						})(boardList[i]);
 					}
@@ -126,6 +120,7 @@ function getBoards() {
 
 
 // Edit pin
+
 chrome.extension.onRequest.addListener(function (resp, sender, sendResponse) {
 	setActive();
 	var xhr = new XMLHttpRequest();
@@ -149,9 +144,9 @@ chrome.extension.onRequest.addListener(function (resp, sender, sendResponse) {
 	xhr.send("details=" + resp.Data.description + "&link=" + resp.Data.url + "&board=" + resp.Data.board_id + "&csrfmiddlewaretoken=" + token);
 
 
+
+
 });
-
-
 
 function pin(board, media_url, title) {
 	setActive();
@@ -164,7 +159,8 @@ function pin(board, media_url, title) {
 			if (xhr.readyState === 4) {
 				if (xhr.status === 200) {
 					updateBody(xhr.responseText);
-					var params = {
+					var data = {
+						tab_id: tab.id,
 						url: tab.url,
 						media_url: media_url,
 						description: title,
@@ -173,11 +169,18 @@ function pin(board, media_url, title) {
 						board_name: document.querySelectorAll(".pinSuccess h3 a")[0].innerHTML
 					}
 
-					if (navigator.appVersion.indexOf("Mac") != -1) {
-						chrome.windows.create({ url: "notification-pinned.html#" + JSON.stringify(params), type: "popup", width: 350, height: 150 });
+					if (pinterestedTabs.indexOf(tab.id) !== -1) {
+						chrome.tabs.sendRequest(tab.id, data);
 					} else {
-						var notification = webkitNotifications.createHTMLNotification("notification-pinned.html#" + JSON.stringify(params)).show();
+						pinterestedTabs.push(tab.id);
+						chrome.tabs.executeScript(tab.id, { file: "becausemac.js" }, function () {
+							chrome.tabs.sendRequest(tab.id, data);
+						});
 					}
+
+
+
+
 				} else {
 					var notification = webkitNotifications.createNotification("img/logo.png", "You're logged out!", "Please log into Pinterest and try again.");
 					notification.show();
@@ -195,6 +198,13 @@ function pin(board, media_url, title) {
 
 chrome.browserAction.onClicked.addListener(function(tab) {
 	chrome.tabs.create({ "url": "http://pinterest.com/", "selected": true });
+});
+
+chrome.tabs.onRemoved.addListener(function (tabid) {
+	var ind = pinterestedTabs.indexOf(tabid);
+	if (ind !== -1) {
+		pinterestedTabs.splice(ind, 1);
+	}
 });
 
 startTokenSchedule();
