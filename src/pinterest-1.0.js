@@ -3,6 +3,8 @@
  *  Small library to communicate with Pinterest
  *  Based upon Quick-Pinterest code by William Parry.
  *
+ *  Last update: 2012-05-13
+ *
  *  ==========================================================================================
  *  
  *  Copyright (c) 2012, Davide Casali.
@@ -16,7 +18,7 @@
  *  Redistributions in binary form must reproduce the above copyright notice, this list of 
  *  conditions and the following disclaimer in the documentation and/or other materials 
  *  provided with the distribution.
- *  Neither the name of the Baker Framework nor the names of its contributors may be used to 
+ *  Neither the name of the Pinterest.js library nor the names of its contributors may be used to 
  *  endorse or promote products derived from this software without specific prior written 
  *  permission.
  *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY 
@@ -31,7 +33,7 @@
  *
  ********************************************************************************************************
  *
- * This library uses HTML scraping of the bookmarklet to work, since right now there's no API.
+ *  This library uses HTML scraping of the bookmarklet to work, since right now there's no API.
  *
  ********************************************************************************************************
  *
@@ -48,11 +50,12 @@ var Pinterest = {
   
   pinterestBookmarklet: "http://pinterest.com/pin/create/bookmarklet/",
   
-  boardsScheduleIsRunning: false,
-  tokenScheduleIsRunning: false,
+  token: null, // this stores the token taken from the form and used in the POST request to pin a new media URL.
+  boards: null,
   
-  token: "", // this stores the token taken from the form and used in the POST request to pin a new media URL.
+  cfgScheduleIsRunning: false,
   
+  // **************************************************************************************************** API
   getBoards: function(fx) {
     /****************************************************************************************************
      * Returns to the callback function an Array of board titles.
@@ -61,41 +64,17 @@ var Pinterest = {
      */
     var self = this;
     
-    if (!this.boardsScheduleIsRunning) {
-      this.boardsScheduleIsRunning = true;
-      
-      var xhr = new XMLHttpRequest();
-      xhr.open("GET", this.pinterestBookmarklet, true);
-      
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-          if (xhr.status === 200) {
-            // Convert Text to a HTML DOM (since the response is not text/xml we have to do this by hand)
-            var xmlDOM = self._updateBody(xhr.responseText);
-            
-            var boardList = xmlDOM.querySelectorAll(".BoardList ul li");
-            
-            var boards = [];
-            for (var i = 0; i < boardList.length; i++) {
-              boards.push({
-                  'title': boardList[i].querySelectorAll('span')[0].innerText,
-                  'id': boardList[i].getAttribute('data')
-              });
-            }
-            fx(boards); // CALLBACK -->
-          } else {
-            // ****** Handle logged out
-            fx(401); // CALLBACK -->
-          }
-          
-          self.boardsScheduleIsRunning = false;
-        }
-      }
-      
-      xhr.send(null);
+    if (this.boards) {
+      // ****** Boards available, just return them
+      fx(this.boards); // CALLBACK -->
+    } else {
+      // ****** Boards are missing, get them implicitly.
+      this.initConfiguration(function __initConfigurationImplicitFromGetBoards() {
+        if (self.boards) fx(self.boards); // CALLBACK -->
+        else fx(401); // CALLBACK -->
+      });
     }
   },
-  
   pin: function(boardId, mediaURL, description, fx) {
     /****************************************************************************************************
      * Pins a mediaURL media using the description as Description and boardId as target board.
@@ -106,9 +85,9 @@ var Pinterest = {
     
     if (!this.token) {
       // ****** Token is missing, get it implicitly.
-      this.getToken(function __getTokenImplicit(token) {
-        self.token = token;
-        self.pin(boardId, mediaURL, description, fx);
+      this.initConfiguration(function __initConfigurationImplicitFromPin() {
+        if (self.token) self.pin(boardId, mediaURL, description, fx); // if token was retrieved, try again pinning
+        else fx(401); // CALLBACK -->
       });
     } else {
       // ****** Token available, let's go!
@@ -144,17 +123,63 @@ var Pinterest = {
     }
   },
   
-  // **************************************************************************************************** OTHER API
+  // **************************************************************************************************** SUPPORT API
   getToken: function(fx) {
     /****************************************************************************************************
      * Gets the token to allow posting and pass it as first parameter of the callback function.
      *
      */
     var self = this;
+    
+    if (this.token) {
+      // ****** Token available, just return it
+      fx(this.token); // CALLBACK -->
+    } else {
+      // ****** Token is missing, get it implicitly.
+      this.initConfiguration(function __initConfigurationImplicitFromGetToken() {
+        fx(self.token); // CALLBACK -->
+      });
+    }
+  },
+  initConfiguration: function(fx) {
+    /****************************************************************************************************
+     * Gets all the configuration data needed from the bookmarklet: boards and token.
+     * The values are assigned to the internal class variables.
+     * Accepts an optional function parameter triggered when the initialization process is completed.
+     *
+     * NOTE: While getToken and getBoards doesn't force update the class variables, this routine does.
+     *
+     */
+    var self = this;
+    
+    this.getConfiguration(function ____getConfigurationImplicitFromInitConfiguration(token, boards) {
+      if (token) {
+        // ****** Success, set the values
+        self.token = token;
+        self.boards = boards;
+      } else {
+        // ****** Failure, reset them to avoid troubles
+        self.token = null;
+        self.boards = null;
+      }
+      
+      if (fx) fx(); // CALLBACK -->
+    });
+  },
+  getConfiguration: function(fx) {
+    /****************************************************************************************************
+     * Gets all the configuration data needed from the bookmarklet: boards and token.
+     * Returns to the callback functions two parameters: the token and the boards Array.
+     * Returns null as the token and 401 instead of the array if it's not logged in or something happens.
+     * 
+     * NOTE: While getToken and getBoards doesn't force update the class variables, this routine does.
+     *
+     */
+    var self = this;
     var token = "";
     
-    if (!this.tokenScheduleIsRunning) {
-      this.tokenScheduleIsRunning = true;
+    if (!this.cfgScheduleIsRunning) {
+      this.cfgScheduleIsRunning = true;
       
       var xhr = new XMLHttpRequest();
       xhr.open("GET", this.pinterestBookmarklet, true);
@@ -165,14 +190,26 @@ var Pinterest = {
             // Convert Text to a HTML DOM (since the response is not text/xml we have to do this by hand)
             var xmlDOM = self._updateBody(xhr.responseText);
             
+            // ****** Get Token
             token = xmlDOM.querySelectorAll("input[name='csrfmiddlewaretoken']")[0].value;
             
-            fx(token); // CALLBACK -->
+            // ****** Get Boards
+            var boardList = xmlDOM.querySelectorAll(".BoardList ul li");
+            
+            var boards = [];
+            for (var i = 0; i < boardList.length; i++) {
+              boards.push({
+                  'title': boardList[i].querySelectorAll('span')[0].innerText,
+                  'id': boardList[i].getAttribute('data')
+              });
+            }
+            
+            fx(token, boards); // CALLBACK -->
           } else {
             // ****** Handle logged out
-            fx(401); // CALLBACK -->
+            fx(null, 401); // CALLBACK -->
           }
-          self.tokenScheduleIsRunning = false;
+          self.cfgScheduleIsRunning = false;
         }
       }
       
@@ -180,7 +217,7 @@ var Pinterest = {
     }
   },
   
-  // **************************************************************************************************** SUPPORT
+  // **************************************************************************************************** INTERNAL
   _updateBody: function(str) {
     /****************************************************************************************************
      * This function creates a new document object to be used to parse a HTML string.
