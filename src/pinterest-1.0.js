@@ -51,6 +51,7 @@ var Pinterest = {
   boardsScheduleIsRunning: false,
   tokenScheduleIsRunning: false,
   
+  token: "", // this stores the token taken from the form and used in the POST request to pin a new media URL.
   
   getBoards: function(fx) {
     /****************************************************************************************************
@@ -103,35 +104,44 @@ var Pinterest = {
      */
     var self = this;
     
-     var xhr = new XMLHttpRequest();
-     xhr.open("POST", this.pinterestBookmarklet, true);
-     
-     xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-     xhr.onreadystatechange = function () {
-       if (xhr.readyState === 4) {
-         if (xhr.status === 200) {
-           // Convert Text to a HTML DOM (since the response is not text/xml we have to do this by hand)
-          var xmlDOM = self._updateBody(xhr.responseText);
-           
-           // Prepare params
-           var params = {
-             media_url: mediaURL,
-             description: description,
-             pin_id: xmlDOM.querySelectorAll(".pinSuccess ul li:first-child a")[0].href.split('/')[4],
-             board_id: boardId,
-             board_name: xmlDOM.querySelectorAll(".pinSuccess h3 a")[0].innerHTML
-           }
-           
-           fx(params); // CALLBACK -->
-         } else {
-           // ****** Handle logged out
-           fx(401); // CALLBACK -->
-         }
-       }
-     };
-     
-     // Pin!
-     xhr.send("board=" + boardId + "&currency_holder=buyable&peeps_holder=replies&tag_holder=tags&title=" + description + "&media_url=" + encodeURIComponent(mediaURL) + "&csrfmiddlewaretoken=" + token + "&caption=" + description);
+    if (!this.token) {
+      // ****** Token is missing, get it implicitly.
+      this.getToken(function __getTokenImplicit(token) {
+        self.token = token;
+        self.pin(boardId, mediaURL, description, fx);
+      });
+    } else {
+      // ****** Token available, let's go!
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", this.pinterestBookmarklet, true);
+      
+      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            // Convert Text to a HTML DOM (since the response is not text/xml we have to do this by hand)
+            var xmlDOM = self._updateBody(xhr.responseText);
+          
+            // Prepare params
+            var params = {
+              media_url: mediaURL,
+              description: description,
+              pin_id: xmlDOM.querySelectorAll(".pinSuccess ul li:first-child a")[0].href.split('/')[4],
+              board_id: boardId,
+              board_name: xmlDOM.querySelectorAll(".pinSuccess h3 a")[0].innerHTML
+            }
+            
+            fx(params); // CALLBACK -->
+          } else {
+            // ****** Handle logged out
+            fx(401); // CALLBACK -->
+          }
+        }
+      };
+
+      // Pin!
+      xhr.send("board=" + boardId + "&currency_holder=buyable&peeps_holder=replies&tag_holder=tags&title=" + description + "&media_url=" + encodeURIComponent(mediaURL) + "&csrfmiddlewaretoken=" + this.token + "&caption=" + description);
+    }
   },
   
   // **************************************************************************************************** OTHER API
