@@ -87,7 +87,7 @@ var Pinterest = {
             fx(401); // CALLBACK -->
           }
           
-          this.boardsScheduleIsRunning = false;
+          self.boardsScheduleIsRunning = false;
         }
       }
       
@@ -118,7 +118,7 @@ var Pinterest = {
              media_url: mediaURL,
              description: description,
              pin_id: xmlDOM.querySelectorAll(".pinSuccess ul li:first-child a")[0].href.split('/')[4],
-             board_id: board,
+             board_id: boardId,
              board_name: xmlDOM.querySelectorAll(".pinSuccess h3 a")[0].innerHTML
            }
            
@@ -162,7 +162,7 @@ var Pinterest = {
             // ****** Handle logged out
             fx(401); // CALLBACK -->
           }
-          this.tokenScheduleIsRunning = false;
+          self.tokenScheduleIsRunning = false;
         }
       }
       
