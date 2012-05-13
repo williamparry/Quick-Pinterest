@@ -71,7 +71,7 @@ var Pinterest = {
       // ****** Boards are missing, get them implicitly.
       this.initConfiguration(function __initConfigurationImplicitFromGetBoards() {
         if (self.boards) fx(self.boards); // CALLBACK -->
-        else fx(401); // CALLBACK -->
+        else fx(null); // CALLBACK -->
       });
     }
   },
@@ -112,8 +112,8 @@ var Pinterest = {
             
             fx(params); // CALLBACK -->
           } else {
-            // ****** Handle logged out
-            fx(401); // CALLBACK -->
+            // ****** Handle error statuses
+            fx(xhr.status); // CALLBACK -->
           }
         }
       };
@@ -207,7 +207,7 @@ var Pinterest = {
             fx(token, boards); // CALLBACK -->
           } else {
             // ****** Handle logged out
-            fx(null, 401); // CALLBACK -->
+            fx(null, xhr.status); // CALLBACK -->
           }
           self.cfgScheduleIsRunning = false;
         }
