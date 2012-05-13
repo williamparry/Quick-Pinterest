@@ -5,61 +5,24 @@ This script is intended for general use and no warranty is implied for suitabili
 I hold no responsibility for your setup or any damage done while using/installing/modifing this script.
 */
 
-var boardsSchedule,
-	boardsScheduleIsRunning = false,
-	tokenSchedule,
-	tokenScheduleIsRunning = false,
-	token,
-	pinterestedTabs = [];
+// **************************************************************************************************** INTERNAL
+var pinterestedTabs = [];
+var timerSchedule = null;
 
-function updateBody(str) {
-	var range = document.createRange();
-	range.selectNode(document.body);
-	var documentFragment = range.createContextualFragment(str);
-	document.body.innerHTML = "";
-	document.body.appendChild(documentFragment);
+function startSchedule() {
+  // Prepare
+  function tickGetConfiguration() {
+    Pinterest.initConfiguration(getBoards);
+  } 
+  
+  // Call
+	timerSchedule = setInterval(tickGetConfiguration, 60000);
+	tickGetConfiguration();
 }
 
-function getToken() {
-	if (!tokenScheduleIsRunning) {
-		tokenScheduleIsRunning = true;
-		var xhr = new XMLHttpRequest();
-		xhr.open("GET", "http://pinterest.com/pin/create/bookmarklet/", true);
-		xhr.onreadystatechange = function () {
-			if (xhr.readyState === 4) {
-				if (xhr.status === 200) {
-					updateBody(xhr.responseText);
-					token = document.querySelectorAll("input[name='csrfmiddlewaretoken']")[0].value;
-					stopTokenSchedule();
-					startBoardsSchedule();
-				} else {
-					makeLoggedOutMenu();
-				}
-				tokenScheduleIsRunning = false;
-			}
-		};
-		xhr.send(null);
-	}
-}
-
-function startBoardsSchedule() {
-	boardsSchedule = setInterval(getBoards, 60000);
-	getBoards();
-}
-
-function stopBoardsSchedule() {
-	clearInterval(boardsSchedule);
-	boardsSchedule = null;
-}
-
-function startTokenSchedule() {
-	tokenSchedule = setInterval(getToken, 5000);
-	getToken();
-}
-
-function stopTokenSchedule() {
-	clearInterval(tokenSchedule);
-	tokenSchedule = null;
+function stopSchedule() {
+	clearInterval(timerSchedule);
+	timerSchedule = null;
 }
 
 function setActive() {
@@ -71,10 +34,7 @@ function setInactive() {
 }
 
 function handleLoggedOut() {
-	stopBoardsSchedule();
-	token = null;
 	makeLoggedOutMenu();
-	startTokenSchedule();
 }
 
 function makeLoggedOutMenu() {
@@ -86,41 +46,35 @@ function makeLoggedOutMenu() {
 	});
 }
 
+
+// **************************************************************************************************** PINTEREST CALLS
 function getBoards() {
-	if (!boardsScheduleIsRunning) {
-		boardsScheduleIsRunning = true;
-		var xhr = new XMLHttpRequest();
-		xhr.open("GET", "http://pinterest.com/pin/create/bookmarklet/", true);
-		xhr.onreadystatechange = function () {
-			if (xhr.readyState === 4) {
-				if (xhr.status === 200) {
-					chrome.contextMenus.removeAll();
-					var contextMenuImage = chrome.contextMenus.create({ "title": "Pin image to", "contexts": ["image"] });
-					updateBody(xhr.responseText);
-					var boardList = document.querySelectorAll(".BoardList ul li");
-					for (var i = 0; i < boardList.length; i++) {
-						(function (board) {
-							var boardTitle = board.querySelectorAll('span')[0].innerText;
-							chrome.contextMenus.create({ "title": boardTitle, "contexts": ["image"],
-								"onclick": function (obj) {
-									pin(board.getAttribute('data'), obj.srcUrl);
-								}, "parentId": contextMenuImage
-							});
-						})(boardList[i]);
-					}
-				} else {
-					handleLoggedOut();
-				}
-				boardsScheduleIsRunning = false;
-			}
-		};
-		xhr.send(null);
-	}
+  Pinterest.getBoards(function __getBoards(boards) {
+    if (boards) {
+      // We have boards, let's create the menu
+      
+      chrome.contextMenus.removeAll();
+      var contextMenuImage = chrome.contextMenus.create({ "title": "Pin image to", "contexts": ["image"] });
+      
+      for (var i = 0; i < boards.length; i++) {
+        (function (board) {
+					chrome.contextMenus.create({ "title": board.title, "contexts": ["image"],
+						"onclick": function (obj) {
+							pin(board.id, obj.srcUrl);
+						}, "parentId": contextMenuImage
+					});
+				})(boards[i]);
+      }
+      
+    } else {
+      // Uh oh, no boards.
+      handleLoggedOut();
+    }
+  });
 }
 
 
 // Edit pin
-
 chrome.extension.onRequest.addListener(function (resp, sender, sendResponse) {
 	setActive();
 	var xhr = new XMLHttpRequest();
@@ -141,15 +95,69 @@ chrome.extension.onRequest.addListener(function (resp, sender, sendResponse) {
 		}
 	}
 
-	xhr.send("details=" + resp.Data.description + "&link=" + resp.Data.url + "&board=" + resp.Data.board_id + "&csrfmiddlewaretoken=" + token);
-
-
-
+	xhr.send("details=" + resp.Data.description + "&link=" + resp.Data.url + "&board=" + resp.Data.board_id + "&csrfmiddlewaretoken=" + Pinterest.token);
 
 });
 
+
 function pin(board, media_url, title) {
-	setActive();
+  
+  setActive();
+	chrome.tabs.getSelected(null, function (tab) {
+		title = title ? title : tab.title;
+		
+		// Pin!
+		Pinterest.pin(board, media_url, title, function(pinnedObject) { 
+		  if (isNaN(pinnedObject)) {
+		    // ****** Pinned
+		    // TODO
+		    
+		    if (pinterestedTabs.indexOf(tab.id) !== -1) {
+					chrome.tabs.sendRequest(tab.id, pinnedObject);
+				} else {
+					pinterestedTabs.push(tab.id);
+					chrome.tabs.executeScript(tab.id, { file: "becausemac.js" }, function () {
+						chrome.tabs.sendRequest(tab.id, pinnedObject);
+					});
+				}
+		  } else {
+		    // ****** Error
+		    var nTitle = "";
+		    var nMessage = "";
+		    
+		    if (pinnedObject >= 500) {
+		      // Internal server errors
+		      nTitle = "Pinterest had an hiccup";
+		      nMessage = "Please try again in a few minutes";
+		    } else {
+		      // Most likely logged out
+		      nTitle = "You're logged out!";
+		      nMessage = "Please log into Pinterest and try again.";
+		    }
+		    
+		    // Show error message
+		    var notification = webkitNotifications.createNotification("img/logo.png", nTitle, nMessage);
+				notification.show();
+				setTimeout(function () { notification.cancel(); }, 3000);
+				
+		    handleLoggedOut();
+		  }
+		  
+		  setInactive();
+	  });
+	});
+  
+  /* From Pinterest.js
+   var params = {
+      media_url: mediaURL,
+      description: description,
+      pin_id: xmlDOM.querySelectorAll(".pinSuccess ul li:first-child a")[0].href.split('/')[4],
+      board_id: boardId,
+      board_name: xmlDOM.querySelectorAll(".pinSuccess h3 a")[0].innerHTML
+    }
+  */
+  
+	/*setActive();
 	chrome.tabs.getSelected(null, function (tab) {
 		title = title ? title : tab.title;
 		var xhr = new XMLHttpRequest();
@@ -193,9 +201,12 @@ function pin(board, media_url, title) {
 			}
 		};
 		xhr.send("board=" + board + "&currency_holder=buyable&peeps_holder=replies&tag_holder=tags&title=" + title + "&media_url=" + encodeURIComponent(media_url) + "&url=" + encodeURIComponent(tab.url) + "&csrfmiddlewaretoken=" + token + "&caption=" + title);
-	});
+	});*/
 }
 
+
+
+// **************************************************************************************************** OTHER
 chrome.browserAction.onClicked.addListener(function(tab) {
 	chrome.tabs.create({ "url": "http://pinterest.com/", "selected": true });
 });
@@ -207,4 +218,6 @@ chrome.tabs.onRemoved.addListener(function (tabid) {
 	}
 });
 
-startTokenSchedule();
+
+// **************************************************************************************************** LET'S GO!
+startSchedule();
