@@ -45,6 +45,6 @@ CHANGELOG
 LICENSE
 -------
 
-  _Copyright (C) 2012, William Parry, Davide Casali
+  _Copyright (C) 2012, William Parry, Davide Casali_  
   _Licensed under **BSD Opensource License** (free for personal and commercial use)_
 
