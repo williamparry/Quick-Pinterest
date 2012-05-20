@@ -1,8 +1,0 @@
-Copyright (C) 2012, William Parry
-Licensed under BSD License
-
-
-=== Version 1.5 ===
-
-Rebuilt notifications to embed an iframe so mac users get a better experience.
-Fixed a potential problem with the location hash splitting in the notification script
