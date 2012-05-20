@@ -110,11 +110,16 @@ function pin(board, media_url, title) {
 		Pinterest.pin(board, media_url, title, function(pinnedObject) { 
 		  if (isNaN(pinnedObject)) {
 		    // ****** Pinned
-		    // TODO
 		    
+		    // Add more data
+		    pinnedObject.page_url = tab.url; // this is used to message back with parent.postMessage()
+		    
+		    // Open the message overlay
 		    if (pinterestedTabs.indexOf(tab.id) !== -1) {
+		      // If the page has the script loaded already
 					chrome.tabs.sendRequest(tab.id, pinnedObject);
 				} else {
+				  // If the page hasn't the script already
 					pinterestedTabs.push(tab.id);
 					chrome.tabs.executeScript(tab.id, { file: "becausemac.js" }, function () {
 						chrome.tabs.sendRequest(tab.id, pinnedObject);
@@ -128,7 +133,7 @@ function pin(board, media_url, title) {
 		    if (pinnedObject >= 500) {
 		      // Internal server errors
 		      nTitle = "Pinterest had an hiccup";
-		      nMessage = "Please try again in a few minutes";
+		      nMessage = "Please try again pinning by using the Pinterest bookmarklet to see if the problem persists";
 		    } else {
 		      // Most likely logged out
 		      nTitle = "You're logged out!";

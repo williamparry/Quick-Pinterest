@@ -100,12 +100,12 @@ var Pinterest = {
           if (xhr.status === 200) {
             // Convert Text to a HTML DOM (since the response is not text/xml we have to do this by hand)
             var xmlDOM = self._updateBody(xhr.responseText);
-          
+            
             // Prepare params
             var params = {
               media_url: mediaURL,
               description: description,
-              pin_id: xmlDOM.querySelectorAll(".pinSuccess ul li:first-child a")[0].href.split('/')[4],
+              pin_id: xmlDOM.querySelectorAll(".pinSuccess ul li:first-child a")[0].attributes.href.nodeValue.split("/")[2],
               board_id: boardId,
               board_name: xmlDOM.querySelectorAll(".pinSuccess h3 a")[0].innerHTML
             }
