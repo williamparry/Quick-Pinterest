@@ -48,14 +48,3 @@ LICENSE
   _Copyright (C) 2012, William Parry, Davide Casali
   _Licensed under **BSD Opensource License** (free for personal and commercial use)_
 
-
-
-=== Current GitHub Master ===
-
-Work in progress to extract a Pinterest.js library from William's code.
-
-
-=== Version 1.5 ===
-
-Rebuilt notifications to embed an iframe so mac users get a better experience.
-Fixed a potential problem with the location hash splitting in the notification script
