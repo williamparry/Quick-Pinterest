@@ -95,7 +95,7 @@ chrome.extension.onRequest.addListener(function (resp, sender, sendResponse) {
 		}
 	}
 
-	xhr.send("details=" + resp.Data.description + "&link=" + resp.Data.url + "&board=" + resp.Data.board_id + "&csrfmiddlewaretoken=" + Pinterest.token);
+	xhr.send("details=" + resp.Data.description + "&link=" + resp.Data.media_url + "&board=" + resp.Data.board_id + "&csrfmiddlewaretoken=" + Pinterest.token);
 
 });
 
