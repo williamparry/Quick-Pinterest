@@ -32,7 +32,9 @@ CHANGELOG
 ---------
 
 * **1.6** (20/05/2012)
-  * Created Pinterest.js library by @Folletto
+  * Created Pinterest.js library (@Folletto)
+  * Fixed error message in case of captcha request (@Folletto)
+  * Minor fixes (@Folletto)
 * **1.5** (14/03/2012)
   * Added support for in-page optional description update
 * **1.0** (19/02/2012)
