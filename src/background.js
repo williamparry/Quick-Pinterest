@@ -49,28 +49,29 @@ function makeLoggedOutMenu() {
 
 // **************************************************************************************************** PINTEREST CALLS
 function getBoards() {
-  Pinterest.getBoards(function __getBoards(boards) {
-    if (boards) {
-      // We have boards, let's create the menu
-      
-      chrome.contextMenus.removeAll();
-      var contextMenuImage = chrome.contextMenus.create({ "title": "Pin image to", "contexts": ["image"] });
-      
-      for (var i = 0; i < boards.length; i++) {
-        (function (board) {
-					chrome.contextMenus.create({ "title": board.title, "contexts": ["image"],
-						"onclick": function (obj) {
-							pin(board.id, obj.srcUrl);
-						}, "parentId": contextMenuImage
-					});
-				})(boards[i]);
-      }
-      
-    } else {
-      // Uh oh, no boards.
-      handleLoggedOut();
-    }
-  });
+    Pinterest.getBoards(function __getBoards(boards) {
+        console.log(boards);
+        if (boards.length > 0) {
+            // We have boards, let's create the menu
+
+            chrome.contextMenus.removeAll();
+            var contextMenuImage = chrome.contextMenus.create({ "title": "Pin image to", "contexts": ["image"] });
+
+            for (var i = 0; i < boards.length; i++) {
+                (function (board) {
+                    chrome.contextMenus.create({ "title": board.title, "contexts": ["image"],
+                        "onclick": function (obj) {
+                            pin(board.id, obj.srcUrl);
+                        }, "parentId": contextMenuImage
+                    });
+                })(boards[i]);
+            }
+
+        } else {
+            // Uh oh, no boards.
+            handleLoggedOut();
+        }
+    });
 }
 
 
