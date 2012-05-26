@@ -145,101 +145,12 @@ html{color:#000;background:#FFF}body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre
 			<div id="error">Error :( Please try again.</div>
 			<div id="progress" />
 		</div>
+
+		<script src="notification.js"></script>
+
 	</body>
 
-	<script>
-    // **************************************************************************************************** SCRIPT
-    var countDownAmount = 5000;
-    var currentCount = countDownAmount;
-    var countDown = null;
-    var data = JSON.parse(window.location.hash.split('#data=')[1]);
-
-    window.onload = function () {
-      /*****************************************************************************************************
-       * Update the form with the right data.
-       */
-      var txtDescription = document.getElementById("txtDescription");
-      var btnUpdate = document.getElementById("btnUpdate");
-      var error = document.getElementById("error");
-      var img = document.getElementById("imgMain");
-      
-      document.getElementById("title").innerHTML = 'Pinned to ' + data.board_name;
-      
-      
-      // ****** On image load set correct image thumbnail size
-      img.src = data.media_url;
-      
-      img.onload = function () {
-        if (this.width >= this.height) {
-          this.width = Math.min(45, this.width);
-        } else {
-          this.height = Math.min(45, this.height);
-        }
-        img.style.display = "block";
-      }
-      
-      // ****** Update Pin button
-      document.getElementById("frmUpdate").onsubmit = function (e) {
-        e.preventDefault();
-        error.style.display = "none";
-        txtDescription.disabled = "disabled";
-        btnUpdate.disabled = "disabled";
-        btnUpdate.value = "Updating...";
-        
-        data.description = txtDescription.value;
-        
-        chrome.extension.sendRequest({ Data: data }, function (success) {
-          if (success) {
-            btnUpdate.value = "Updated!";
-            setTimeout(function () {
-              close();
-            }, 2000);
-          } else {
-            error.style.display = "block";
-            txtDescription.removeAttribute("disabled");
-            btnUpdate.removeAttribute("disabled");
-            btnUpdate.value = "Update";
-          }
-        });
-      }
-      
-      // ****** Countdown
-      var EProgress = document.getElementById("progress");
-      countDown = setInterval(function () {
-        currentCount -= 50;
-        if (currentCount == 0) {
-          close();
-        } else {
-          EProgress.style.width = Math.round((currentCount / countDownAmount) * 100) + "%";
-        }
-      }, 50);
-      
-      // ****** Description text field: when clicked, stop countdown
-      txtDescription.placeholder = data.description;
-      txtDescription.onclick = removeProgressBar;
-      btnUpdate.onclick = removeProgressBar;
-    }
-      
-    function close() {
-      /*****************************************************************************************************
-       * Send message back to becausemac.js to remove iframe
-       */
-      parent.postMessage(data.pin_id, data.page_url);
-    }
-    
-    function removeProgressBar() {
-      /*****************************************************************************************************
-       * Remove the progress bar timer and indicator
-       */
-      clearInterval(countDown);
-      countDown = null;
-      
-      var EProgress = document.getElementById("progress");
-      if (EProgress) {
-        document.getElementById("main").removeChild(EProgress);
-      }
-    }
-	</script>
+	
 
 	
 </html>

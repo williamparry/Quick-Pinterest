@@ -1,13 +1,38 @@
 /*
-Copyright William Parry 2012
-
-This script is intended for general use and no warranty is implied for suitability to any given task. 
-I hold no responsibility for your setup or any damage done while using/installing/modifing this script.
+*  background.js
+*
+*  Last update: 2012-05-26
+*
+*  ==========================================================================================
+*  
+*  Copyright (c) 2012, William Parry.
+*  All rights reserved.
+*  
+*  Redistribution and use in source and binary forms, with or without modification, are 
+*  permitted provided that the following conditions are met:
+*  
+*  Redistributions of source code must retain the above copyright notice, this list of 
+*  conditions and the following disclaimer.
+*  Redistributions in binary form must reproduce the above copyright notice, this list of 
+*  conditions and the following disclaimer in the documentation and/or other materials 
+*  provided with the distribution.
+*  Neither the name of the Pinterest.js library nor the names of its contributors may be used to 
+*  endorse or promote products derived from this software without specific prior written 
+*  permission.
+*  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY 
+*  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES 
+*  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
+*  SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, 
+*  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+*  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+*  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
+*  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+*  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*
 */
 
-// **************************************************************************************************** INTERNAL
-var pinterestedTabs = [];
-var timerSchedule = null;
+var pinterestedTabs = [],
+	timerSchedule = null;
 
 function startSchedule() {
   // Prepare
@@ -49,29 +74,27 @@ function makeLoggedOutMenu() {
 
 // **************************************************************************************************** PINTEREST CALLS
 function getBoards() {
-    Pinterest.getBoards(function __getBoards(boards) {
-        console.log(boards);
-        if (boards.length > 0) {
-            // We have boards, let's create the menu
+	Pinterest.getBoards(function (boards) {
 
-            chrome.contextMenus.removeAll();
-            var contextMenuImage = chrome.contextMenus.create({ "title": "Pin image to", "contexts": ["image"] });
+		if (boards.length > 0) {
 
-            for (var i = 0; i < boards.length; i++) {
-                (function (board) {
-                    chrome.contextMenus.create({ "title": board.title, "contexts": ["image"],
-                        "onclick": function (obj) {
-                            pin(board.id, obj.srcUrl);
-                        }, "parentId": contextMenuImage
-                    });
-                })(boards[i]);
-            }
+			chrome.contextMenus.removeAll();
+			var contextMenuImage = chrome.contextMenus.create({ "title": "Pin image to", "contexts": ["image"] });
 
-        } else {
-            // Uh oh, no boards.
-            handleLoggedOut();
-        }
-    });
+			for (var i = 0; i < boards.length; i++) {
+				(function (board) {
+					chrome.contextMenus.create({ "title": board.title, "contexts": ["image"],
+						"onclick": function (obj) {
+							pin(board.id, obj.srcUrl);
+						}, "parentId": contextMenuImage
+					});
+				})(boards[i]);
+			}
+
+		} else {
+			handleLoggedOut();
+		}
+	});
 }
 
 
@@ -151,63 +174,8 @@ function pin(board, media_url, title) {
 		  
 		  setInactive();
 	  });
-	});
-  
-  /* From Pinterest.js
-   var params = {
-      media_url: mediaURL,
-      description: description,
-      pin_id: xmlDOM.querySelectorAll(".pinSuccess ul li:first-child a")[0].href.split('/')[4],
-      board_id: boardId,
-      board_name: xmlDOM.querySelectorAll(".pinSuccess h3 a")[0].innerHTML
-    }
-  */
-  
-	/*setActive();
-	chrome.tabs.getSelected(null, function (tab) {
-		title = title ? title : tab.title;
-		var xhr = new XMLHttpRequest();
-		xhr.open("POST", "http://pinterest.com/pin/create/bookmarklet/", true);
-		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-		xhr.onreadystatechange = function () {
-			if (xhr.readyState === 4) {
-				if (xhr.status === 200) {
-					updateBody(xhr.responseText);
-					var data = {
-						tab_id: tab.id,
-						url: tab.url,
-						media_url: media_url,
-						description: title,
-						pin_id: document.querySelectorAll(".pinSuccess ul li:first-child a")[0].href.split('/')[4],
-						board_id: board,
-						board_name: document.querySelectorAll(".pinSuccess h3 a")[0].innerHTML
-					}
+});
 
-					if (pinterestedTabs.indexOf(tab.id) !== -1) {
-						chrome.tabs.sendRequest(tab.id, data);
-					} else {
-						pinterestedTabs.push(tab.id);
-						chrome.tabs.executeScript(tab.id, { file: "becausemac.js" }, function () {
-							chrome.tabs.sendRequest(tab.id, data);
-						});
-					}
-
-
-
-
-				} else {
-					var notification = webkitNotifications.createNotification("img/logo.png", "You're logged out!", "Please log into Pinterest and try again.");
-					notification.show();
-					setTimeout(function () { notification.cancel(); }, 3000);
-
-					handleLoggedOut();
-				}
-
-				setInactive();
-			}
-		};
-		xhr.send("board=" + board + "&currency_holder=buyable&peeps_holder=replies&tag_holder=tags&title=" + title + "&media_url=" + encodeURIComponent(media_url) + "&url=" + encodeURIComponent(tab.url) + "&csrfmiddlewaretoken=" + token + "&caption=" + title);
-	});*/
 }
 
 

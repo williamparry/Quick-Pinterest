@@ -69,7 +69,7 @@ var Pinterest = {
       fx(this.boards); // CALLBACK -->
     } else {
       // ****** Boards are missing, get them implicitly.
-      this.initConfiguration(function __initConfigurationImplicitFromGetBoards() {
+      this.initConfiguration(function () {
         if (self.boards) fx(self.boards); // CALLBACK -->
         else fx(null); // CALLBACK -->
       });
@@ -85,7 +85,7 @@ var Pinterest = {
     
     if (!this.token) {
       // ****** Token is missing, get it implicitly.
-      this.initConfiguration(function __initConfigurationImplicitFromPin() {
+      this.initConfiguration(function () {
         if (self.token) self.pin(boardId, mediaURL, description, fx); // if token was retrieved, try again pinning
         else fx(401); // CALLBACK -->
       });
@@ -136,7 +136,7 @@ var Pinterest = {
       fx(this.token); // CALLBACK -->
     } else {
       // ****** Token is missing, get it implicitly.
-      this.initConfiguration(function __initConfigurationImplicitFromGetToken() {
+      this.initConfiguration(function () {
         fx(self.token); // CALLBACK -->
       });
     }
@@ -152,7 +152,7 @@ var Pinterest = {
      */
     var self = this;
     
-    this.getConfiguration(function ____getConfigurationImplicitFromInitConfiguration(token, boards) {
+    this.getConfiguration(function (token, boards) {
       if (token) {
         // ****** Success, set the values
         self.token = token;
