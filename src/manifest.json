@@ -2,23 +2,23 @@
 	"manifest_version" : 2,
 	"name": "Quick Pinterest",
 	"description": "Pin your favourite images using the context menu. No popups.",
-	"version": "1.6",
+	"version": "1.5.1",
 	"icons": { "16": "img/logo.png", "48": "img/logo.png", "128": "img/logo.png" },
 	"permissions": [
 		"contextMenus",
-		"http://pinterest.com/pin/create/bookmarklet/",
 		"notifications",
 		"tabs",
 		"https://*/*",
 		"http://*/*"
 	],
+	"content_security_policy": "script-src 'self'; object-src 'self'",
 	"web_accessible_resources": [
 		"img/icon.png",
-		"notification-pinned.html"
+		"img/logo.png",
+		"notification.html"
 	],
 	"background": {
 		"scripts": [
-			"pinterest-1.0.js",
 			"background.js"
 		]
 	},

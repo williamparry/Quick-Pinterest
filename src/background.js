@@ -1,53 +1,70 @@
 /*
-*  background.js
-*
-*  Last update: 2012-05-26
-*
-*  ==========================================================================================
-*  
-*  Copyright (c) 2012, William Parry.
-*  All rights reserved.
-*  
-*  Redistribution and use in source and binary forms, with or without modification, are 
-*  permitted provided that the following conditions are met:
-*  
-*  Redistributions of source code must retain the above copyright notice, this list of 
-*  conditions and the following disclaimer.
-*  Redistributions in binary form must reproduce the above copyright notice, this list of 
-*  conditions and the following disclaimer in the documentation and/or other materials 
-*  provided with the distribution.
-*  Neither the name of the Pinterest.js library nor the names of its contributors may be used to 
-*  endorse or promote products derived from this software without specific prior written 
-*  permission.
-*  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY 
-*  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES 
-*  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
-*  SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, 
-*  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-*  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-*  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
-*  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
-*  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*
+Copyright William Parry 2012
+
+This script is intended for general use and no warranty is implied for suitability to any given task. 
+I hold no responsibility for your setup or any damage done while using/installing/modifing this script.
 */
 
-var pinterestedTabs = [],
-	timerSchedule = null;
+var boardsSchedule,
+	boardsScheduleIsRunning = false,
+	tokenSchedule,
+	tokenScheduleIsRunning = false,
+	token,
+	pinterestedTabs = [],
+	Titles = {
+		Login: "Pinterest / Login",
+		Verification: "Sorry!"
+	},
+	currentTitle;
 
-function startSchedule() {
-  // Prepare
-  function tickGetConfiguration() {
-    Pinterest.initConfiguration(getBoards);
-  } 
-  
-  // Call
-	timerSchedule = setInterval(tickGetConfiguration, 60000);
-	tickGetConfiguration();
+function updateBody(str) {
+	var range = document.createRange();
+	range.selectNode(document.body);
+	var documentFragment = range.createContextualFragment(str);
+	document.body.innerHTML = "";
+	document.body.appendChild(documentFragment);
+	currentTitle = document.querySelectorAll('title')[0].innerHTML;
+}
+function getToken() {
+	if (!tokenScheduleIsRunning) {
+		tokenScheduleIsRunning = true;
+		var xhr = new XMLHttpRequest();
+		xhr.open("GET", "https://pinterest.com/pin/create/bookmarklet/", true);
+		xhr.onreadystatechange = function () {
+			if (xhr.readyState === 4) {
+				if (xhr.status === 200) {
+					updateBody(xhr.responseText);
+					token = document.querySelectorAll("input[name='csrfmiddlewaretoken']")[0].value;
+					stopTokenSchedule();
+					startBoardsSchedule();
+				} else {
+					makeLoggedOutMenu();
+				}
+				tokenScheduleIsRunning = false;
+			}
+		};
+		xhr.send(null);
+	}
 }
 
-function stopSchedule() {
-	clearInterval(timerSchedule);
-	timerSchedule = null;
+function startBoardsSchedule() {
+	boardsSchedule = setInterval(getBoards, 60000);
+	getBoards();
+}
+
+function stopBoardsSchedule() {
+	clearInterval(boardsSchedule);
+	boardsSchedule = null;
+}
+
+function startTokenSchedule() {
+	tokenSchedule = setInterval(getToken, 5000);
+	getToken();
+}
+
+function stopTokenSchedule() {
+	clearInterval(tokenSchedule);
+	tokenSchedule = null;
 }
 
 function setActive() {
@@ -59,42 +76,61 @@ function setInactive() {
 }
 
 function handleLoggedOut() {
+	stopBoardsSchedule();
+	token = null;
 	makeLoggedOutMenu();
+	startTokenSchedule();
 }
 
 function makeLoggedOutMenu() {
 	chrome.contextMenus.removeAll();
-	chrome.contextMenus.create({ "title": "Log into your Pinterest Account", "contexts": ["all"],
+	chrome.contextMenus.create({ "title": "Log into Pinterest", "contexts": ["all"],
 		"onclick": function (obj) {
 			chrome.tabs.create({ "url": "https://pinterest.com/login/?next=/", "selected": true });
 		}
 	});
 }
 
-
-// **************************************************************************************************** PINTEREST CALLS
 function getBoards() {
-	Pinterest.getBoards(function (boards) {
-
-		if (boards.length > 0) {
-
-			chrome.contextMenus.removeAll();
-			var contextMenuImage = chrome.contextMenus.create({ "title": "Pin image to", "contexts": ["image"] });
-
-			for (var i = 0; i < boards.length; i++) {
-				(function (board) {
-					chrome.contextMenus.create({ "title": board.title, "contexts": ["image"],
-						"onclick": function (obj) {
-							pin(board.id, obj.srcUrl);
-						}, "parentId": contextMenuImage
-					});
-				})(boards[i]);
+	if (!boardsScheduleIsRunning) {
+		boardsScheduleIsRunning = true;
+		var xhr = new XMLHttpRequest();
+		xhr.open("GET", "https://pinterest.com/pin/create/bookmarklet/", true);
+		xhr.onreadystatechange = function () {
+			if (xhr.readyState === 4) {
+				if (xhr.status === 200) {
+					chrome.contextMenus.removeAll();
+					var contextMenuImage = chrome.contextMenus.create({ "title": "Pin image to", "contexts": ["image"] });
+					updateBody(xhr.responseText);
+					var boardList = document.querySelectorAll(".BoardList ul li");
+					if(boardList.length > 0) {
+						for (var i = 0; i < boardList.length; i++) {
+							(function (board) {
+								var boardTitle = board.querySelectorAll('span')[0].innerText;
+								chrome.contextMenus.create({ "title": boardTitle, "contexts": ["image"],
+									"onclick": function (obj) {
+										pin(board.getAttribute('data'), obj.srcUrl);
+									}, "parentId": contextMenuImage
+								});
+							})(boardList[i]);
+						}
+					} else {
+						makeLoggedOutMenu();
+					}
+				} else {
+					handleLoggedOut();
+				}
+				boardsScheduleIsRunning = false;
 			}
+		};
+		xhr.send(null);
+	}
+}
 
-		} else {
-			handleLoggedOut();
-		}
-	});
+function flashLogout() {
+	var notification = webkitNotifications.createNotification("img/logo.png", "You're logged out!", "Please log into Pinterest and try again.");
+	notification.show();
+	setTimeout(function () { notification.cancel(); }, 3000);
 }
 
 
@@ -102,87 +138,96 @@ function getBoards() {
 chrome.extension.onRequest.addListener(function (resp, sender, sendResponse) {
 	setActive();
 	var xhr = new XMLHttpRequest();
-	xhr.open("POST", "http://pinterest.com/pin/" + resp.Data.pin_id + "/edit/", true);
+	xhr.open("POST", "https://pinterest.com/pin/" + resp.Data.pin_id + "/edit/", true);
 	xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
 	xhr.onreadystatechange = function () {
 		if (xhr.readyState === 4) {
 			if (xhr.status === 200) {
-				sendResponse(true);
+				updateBody(xhr.responseText);
+				if(currentTitle === Titles.Login) {
+					flashLogout();
+					handleLoggedOut();
+					sendResponse(false);
+				} else {
+					sendResponse(true);
+				}
 			} else {
 				sendResponse(false);
-				var notification = webkitNotifications.createNotification("img/logo.png", "You're logged out!", "Please log into Pinterest and try again.");
-				notification.show();
-				setTimeout(function () { notification.cancel(); }, 3000);
-				handleLoggedOut();
 			}
 			setInactive();
 		}
 	}
 
-	xhr.send("details=" + resp.Data.description + "&link=" + resp.Data.media_url + "&board=" + resp.Data.board_id + "&csrfmiddlewaretoken=" + Pinterest.token);
+	xhr.send("details=" + resp.Data.description + "&link=" + resp.Data.url + "&board=" + resp.Data.board_id + "&csrfmiddlewaretoken=" + token);
+
+
+
 
 });
-
 
 function pin(board, media_url, title) {
-  
-  setActive();
+	setActive();
 	chrome.tabs.getSelected(null, function (tab) {
 		title = title ? title : tab.title;
-		
-		// Pin!
-		Pinterest.pin(board, media_url, title, function(pinnedObject) { 
-		  if (isNaN(pinnedObject)) {
-		    // ****** Pinned
-		    
-		    // Add more data
-		    pinnedObject.page_url = tab.url; // this is used to message back with parent.postMessage()
-		    
-		    // Open the message overlay
-		    if (pinterestedTabs.indexOf(tab.id) !== -1) {
-		      // If the page has the script loaded already
-					chrome.tabs.sendRequest(tab.id, pinnedObject);
-				} else {
-				  // If the page hasn't the script already
-					pinterestedTabs.push(tab.id);
-					chrome.tabs.executeScript(tab.id, { file: "becausemac.js" }, function () {
-						chrome.tabs.sendRequest(tab.id, pinnedObject);
-					});
-				}
-		  } else {
-		    // ****** Error
-		    var nTitle = "";
-		    var nMessage = "";
-		    
-		    if (pinnedObject >= 500) {
-		      // Internal server errors
-		      nTitle = "Pinterest had an hiccup";
-		      nMessage = "Please try again pinning by using the Pinterest bookmarklet to see if the problem persists";
-		    } else {
-		      // Most likely logged out
-		      nTitle = "You're logged out!";
-		      nMessage = "Please log into Pinterest and try again.";
-		    }
-		    
-		    // Show error message
-		    var notification = webkitNotifications.createNotification("img/logo.png", nTitle, nMessage);
-				notification.show();
-				setTimeout(function () { notification.cancel(); }, 3000);
-				
-		    handleLoggedOut();
-		  }
-		  
-		  setInactive();
-	  });
-});
+		var xhr = new XMLHttpRequest();
+		xhr.open("POST", "https://pinterest.com/pin/create/bookmarklet/", true);
+		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+		xhr.onreadystatechange = function () {
+			if (xhr.readyState === 4) {
+				if (xhr.status === 200) {
+					
+					// Potential conflict with getBoards method, but not likely
+					updateBody(xhr.responseText);
+					
+					if (currentTitle === Titles.Verification) {
+						chrome.tabs.create({url: "https://pinterest.com/verify_captcha/?src=pinmarklet&return=%2F"});
+						
+						var notification = webkitNotifications.createNotification("img/logo.png", "Verification needed", "Pinterest wants you to prove you are not a robot first...");
+						notification.show();
+						setTimeout(function () { notification.cancel(); }, 3000);
+						
+					} else if(currentTitle === Titles.Login) {
+						flashLogout();
+						handleLoggedOut();
+					} else {
+						
+						var data = {
+							tab_id: tab.id,
+							url: tab.url,
+							media_url: media_url,
+							description: title,
+							pin_id: document.querySelectorAll(".pinSuccess ul li:first-child a")[0].href.split('/')[4],
+							board_id: board,
+							board_name: document.querySelectorAll(".pinSuccess h3 a")[0].innerHTML
+						}
+						
+						if (pinterestedTabs.indexOf(tab.id) !== -1) {
+							chrome.tabs.sendRequest(tab.id, data);
+						} else {
+							pinterestedTabs.push(tab.id);
+							chrome.tabs.executeScript(tab.id, { file: "conduit.js" }, function () {
+								chrome.tabs.sendRequest(tab.id, data);
+							});
+						}
 
+					}
+
+
+				} else {
+					var notification = webkitNotifications.createNotification("img/logo.png", "Something has gone wrong...", "Try again?");
+					notification.show();
+					setTimeout(function () { notification.cancel(); }, 3000);
+				}
+
+				setInactive();
+			}
+		};
+		xhr.send("board=" + board + "&currency_holder=buyable&peeps_holder=replies&tag_holder=tags&title=" + title + "&media_url=" + encodeURIComponent(media_url) + "&url=" + encodeURIComponent(tab.url) + "&csrfmiddlewaretoken=" + token + "&caption=" + title);
+	});
 }
 
-
-
-// **************************************************************************************************** OTHER
 chrome.browserAction.onClicked.addListener(function(tab) {
-	chrome.tabs.create({ "url": "http://pinterest.com/", "selected": true });
+	chrome.tabs.create({ "url": "https://pinterest.com/", "selected": true });
 });
 
 chrome.tabs.onRemoved.addListener(function (tabid) {
@@ -192,6 +237,4 @@ chrome.tabs.onRemoved.addListener(function (tabid) {
 	}
 });
 
-
-// **************************************************************************************************** LET'S GO!
-startSchedule();
+startTokenSchedule();
