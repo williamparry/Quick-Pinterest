@@ -25,6 +25,13 @@ function updateBody(str) {
 	document.body.appendChild(documentFragment);
 	currentTitle = document.querySelectorAll('title')[0].innerHTML;
 }
+
+function flashMessage(title, description) {
+	var notification = webkitNotifications.createNotification("img/logo.png", title, description);
+	notification.show();
+	setTimeout(function () { notification.cancel(); }, 3000);
+}
+
 function getToken() {
 	if (!tokenScheduleIsRunning) {
 		tokenScheduleIsRunning = true;
@@ -127,10 +134,52 @@ function getBoards() {
 	}
 }
 
-function flashLogout() {
-	var notification = webkitNotifications.createNotification("img/logo.png", "You're logged out!", "Please log into Pinterest and try again.");
-	notification.show();
-	setTimeout(function () { notification.cancel(); }, 3000);
+function pin(board, media_url, title) {
+	setActive();
+	chrome.tabs.getSelected(null, function (tab) {
+		title = title ? title : tab.title;
+		var xhr = new XMLHttpRequest();
+		xhr.open("POST", "https://pinterest.com/pin/create/bookmarklet/", true);
+		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+		xhr.onreadystatechange = function () {
+			if (xhr.readyState === 4) {
+				if (xhr.status === 200) {
+					// Potential conflict with getBoards method, but not likely
+					updateBody(xhr.responseText);
+					
+					if (currentTitle === Titles.Verification) {
+						chrome.tabs.create({url: "https://pinterest.com/verify_captcha/?src=pinmarklet&return=%2F"});
+						flashMessage("Verification needed", "Pinterest wants you to prove you are not a robot first...");
+					} else if(currentTitle === Titles.Login) {
+						flashMessage("You're logged out!", "Please log into Pinterest and try again.");
+						handleLoggedOut();
+					} else {
+						var data = {
+							tab_id: tab.id,
+							url: tab.url,
+							media_url: media_url,
+							description: title,
+							pin_id: document.querySelectorAll(".pinSuccess ul li:first-child a")[0].href.split('/')[4],
+							board_id: board,
+							board_name: document.querySelectorAll(".pinSuccess h3 a")[0].innerHTML
+						}
+						if (pinterestedTabs.indexOf(tab.id) !== -1) {
+							chrome.tabs.sendRequest(tab.id, data);
+						} else {
+							pinterestedTabs.push(tab.id);
+							chrome.tabs.executeScript(tab.id, { file: "conduit.js" }, function () {
+								chrome.tabs.sendRequest(tab.id, data);
+							});
+						}
+					}
+				} else {
+					flashMessage("Something has gone wrong...", "Try again?");
+				}
+				setInactive();
+			}
+		};
+		xhr.send("board=" + board + "&currency_holder=buyable&peeps_holder=replies&tag_holder=tags&title=" + title + "&media_url=" + encodeURIComponent(media_url) + "&url=" + encodeURIComponent(tab.url) + "&csrfmiddlewaretoken=" + token + "&caption=" + title);
+	});
 }
 
 
@@ -145,7 +194,7 @@ chrome.extension.onRequest.addListener(function (resp, sender, sendResponse) {
 			if (xhr.status === 200) {
 				updateBody(xhr.responseText);
 				if(currentTitle === Titles.Login) {
-					flashLogout();
+					flashMessage("You're logged out!", "Please log into Pinterest and try again.");
 					handleLoggedOut();
 					sendResponse(false);
 				} else {
@@ -157,74 +206,8 @@ chrome.extension.onRequest.addListener(function (resp, sender, sendResponse) {
 			setInactive();
 		}
 	}
-
 	xhr.send("details=" + resp.Data.description + "&link=" + resp.Data.url + "&board=" + resp.Data.board_id + "&csrfmiddlewaretoken=" + token);
-
-
-
-
 });
-
-function pin(board, media_url, title) {
-	setActive();
-	chrome.tabs.getSelected(null, function (tab) {
-		title = title ? title : tab.title;
-		var xhr = new XMLHttpRequest();
-		xhr.open("POST", "https://pinterest.com/pin/create/bookmarklet/", true);
-		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-		xhr.onreadystatechange = function () {
-			if (xhr.readyState === 4) {
-				if (xhr.status === 200) {
-					
-					// Potential conflict with getBoards method, but not likely
-					updateBody(xhr.responseText);
-					
-					if (currentTitle === Titles.Verification) {
-						chrome.tabs.create({url: "https://pinterest.com/verify_captcha/?src=pinmarklet&return=%2F"});
-						
-						var notification = webkitNotifications.createNotification("img/logo.png", "Verification needed", "Pinterest wants you to prove you are not a robot first...");
-						notification.show();
-						setTimeout(function () { notification.cancel(); }, 3000);
-						
-					} else if(currentTitle === Titles.Login) {
-						flashLogout();
-						handleLoggedOut();
-					} else {
-						
-						var data = {
-							tab_id: tab.id,
-							url: tab.url,
-							media_url: media_url,
-							description: title,
-							pin_id: document.querySelectorAll(".pinSuccess ul li:first-child a")[0].href.split('/')[4],
-							board_id: board,
-							board_name: document.querySelectorAll(".pinSuccess h3 a")[0].innerHTML
-						}
-						
-						if (pinterestedTabs.indexOf(tab.id) !== -1) {
-							chrome.tabs.sendRequest(tab.id, data);
-						} else {
-							pinterestedTabs.push(tab.id);
-							chrome.tabs.executeScript(tab.id, { file: "conduit.js" }, function () {
-								chrome.tabs.sendRequest(tab.id, data);
-							});
-						}
-
-					}
-
-
-				} else {
-					var notification = webkitNotifications.createNotification("img/logo.png", "Something has gone wrong...", "Try again?");
-					notification.show();
-					setTimeout(function () { notification.cancel(); }, 3000);
-				}
-
-				setInactive();
-			}
-		};
-		xhr.send("board=" + board + "&currency_holder=buyable&peeps_holder=replies&tag_holder=tags&title=" + title + "&media_url=" + encodeURIComponent(media_url) + "&url=" + encodeURIComponent(tab.url) + "&csrfmiddlewaretoken=" + token + "&caption=" + title);
-	});
-}
 
 chrome.browserAction.onClicked.addListener(function(tab) {
 	chrome.tabs.create({ "url": "https://pinterest.com/", "selected": true });
