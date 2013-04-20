@@ -1,4 +1,4 @@
-== Project moved ==
+## Project moved
 
 The successor to Quick Pinterest is [Pinafore](https://github.com/Metronomik/Pinafore) which is currently in the early stages of development (not as fully featured as Quick Pinterest) but it is working and has a lesser chance of being taken down by Pinterest.
 
